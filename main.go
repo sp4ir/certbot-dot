@@ -154,7 +154,10 @@ func main() {
 // uses the sanitized domain name (e.g. wildcard_.valenwood.tamriel.io).
 // It also creates wildcard.crt/wildcard.key as convenience aliases.
 func exportCerts(certDir, domain string) error {
-	// CertMagic stores certs under certificates/<CA-dir>/<domain>/
+	// CertMagic sanitizes * -> wildcard_ in directory and file names
+	safeName := strings.ReplaceAll(domain, "*", "wildcard_")
+
+	// CertMagic stores certs under certificates/<CA-dir>/<safeName>/
 	certsBase := filepath.Join(certDir, "certificates")
 	entries, err := os.ReadDir(certsBase)
 	if err != nil {
@@ -166,16 +169,13 @@ func exportCerts(certDir, domain string) error {
 		if !caDir.IsDir() {
 			continue
 		}
-		domainDir := filepath.Join(certsBase, caDir.Name(), domain)
-		certFile := filepath.Join(domainDir, domain+".crt")
-		keyFile := filepath.Join(domainDir, domain+".key")
+		domainDir := filepath.Join(certsBase, caDir.Name(), safeName)
+		certFile := filepath.Join(domainDir, safeName+".crt")
+		keyFile := filepath.Join(domainDir, safeName+".key")
 
 		if _, err := os.Stat(certFile); err != nil {
 			continue
 		}
-
-		// Sanitize domain for filename (replace * with wildcard_)
-		safeName := strings.ReplaceAll(domain, "*", "wildcard_")
 
 		// Copy cert and key to flat paths
 		destCert := filepath.Join(certDir, safeName+".crt")
@@ -201,7 +201,7 @@ func exportCerts(certDir, domain string) error {
 		return nil
 	}
 
-	return fmt.Errorf("no cert files found for %s", domain)
+	return fmt.Errorf("no cert files found for %s (looked for %s)", domain, safeName)
 }
 
 func copyFile(src, dst string) error {
